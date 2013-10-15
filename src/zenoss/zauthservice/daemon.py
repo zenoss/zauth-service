@@ -94,7 +94,6 @@ class ZAuthServer(ZenScriptBase):
         path = env['PATH_INFO']
         if path == '/authorization/login':
             result =  self.handleLogin(env, start_response)
-            profiler.print_stats()
             return result
         elif path == '/authorization/validate':
             return self.handleValidate(env, start_response)
