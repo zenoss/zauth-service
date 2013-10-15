@@ -1,0 +1,4 @@
+
+      [console_scripts]
+      zauth = zenoss.zauthservice.daemon:main
+      
