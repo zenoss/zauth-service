@@ -116,6 +116,7 @@ class ZAuthServer(CmdBase):
         response = WSGIResponse()
         request = HTTPRequest(env['wsgi.input'], env, response)
         with self.db as db:
+            db.sync()
             authorization = IAuthorizationTool(db.dmd())
             credentials = authorization.extractCredentials(request)
 
@@ -131,20 +132,41 @@ class ZAuthServer(CmdBase):
 
         # create the session data
         with self.db as db:
+            db.sync()
             db.browser_id_manager().REQUEST = request
             tokenId = db.browser_id_manager().getBrowserId(create=1)
         expires = time.time() + 60 * 20
         token = dict(id=tokenId, expires=expires)
         with self.db as db:
-            db.session_data()[tokenId] = token
-            start_response('200 OK', [('Content-Type', 'text/html')])
-            db.commit()
+            db.sync()
+            session = db.session_data()
+            if session.get(tokenId) is None:
+                session[tokenId] = token
+                db.commit()
+        start_response('200 OK', [('Content-Type', 'text/html')])
         return json.dumps(token)
 
+    
     def handleValidate(self, env, start_response):
-        print "Validate"
+        queryString = env.get('QUERY_STRING')
+        if not queryString:
+            return self._unauthorized("Missing Token Id", start_response)
+
+        tokenId = queryString.replace('id=', '')
+        if tokenId is None:
+            return self._unauthorized("Missing Token Id", start_response)
+        token = None
+        expired = False
+        with self.db as db:
+            db.sync()
+            token = db.session_data().get(tokenId)
+        if token is None:
+            return self._unauthorized("Unable to find token %s " % tokenId, start_response)
+        expired = time.time() >= token['expires']
+        if expired:
+            return self._unauthorized("Token Expired", start_response)
         start_response('200 OK', [('Content-Type', 'text/html')])
-        return ""
+        return json.dumps(token)
 
     def route(self, env, start_response):
         path = env['PATH_INFO']
