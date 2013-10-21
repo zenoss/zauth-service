@@ -14,14 +14,14 @@
 # Beware of trailing spaces.
 # Don't let your editor turn tabs into spaces or vice versa.
 #============================================================================
-COMPONENT             = zauth-service
+COMPONENT             = zauth
 COMPONENT_PREFIX      = install
 COMPONENT_SYSCONFDIR  = $(COMPONENT_PREFIX)/etc
 _COMPONENT            = $(strip $(COMPONENT))
 SUPERVISOR_CONF       = $(_COMPONENT)_supervisor.conf
 SUPERVISORD_DIR       = $(SYSCONFDIR)/supervisor
 REQUIRES_JDK          = 0
-REQUIRES_PYTHON       = 1
+REQUIRES_PYTHON       = 0
 SRC_DIR               = src
 BUILD_DIR             = build
 DIST_DIR              = dist
@@ -72,21 +72,6 @@ $(TARGET_TAR): $(CHECKED_ENV) $(COMPONENT_SRC)
 
 $(INSTALL_MKDIRS):
 	$(call cmd,MKDIR,$@)
-
-# NB: Use the "|" to indicate an existence-only dep rather than a modtime dep.
-#     This rule should not trigger rebuilding of the component we're installing.
-pyinstall: | $(INSTALL_MKDIRS) 
-	@if [ ! -f "$(TARGET_TAR)" ];then \
-		$(call echol) ;\
-		$(call echol,"Error: Missing $(TARGET_TAR)") ;\
-		$(call echol,"Unable to $@ $(_COMPONENT).") ;\
-		$(call echol,"$(LINE)") ;\
-		$(call echol,"Please run 'make build $@'") ;\
-		$(call echol,"$(LINE)") ;\
-		exit 1 ;\
-	fi 
-	$(warning "About to do this: $(PIPINSTALL) $(TARGET_TAR)")
-	$(PIPINSTALL) $(TARGET_TAR)
 
 install: pyinstall
 	$(warning "Now I'm going to do the symlinking and whatnot")
