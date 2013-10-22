@@ -14,14 +14,14 @@
 # Beware of trailing spaces.
 # Don't let your editor turn tabs into spaces or vice versa.
 #============================================================================
-COMPONENT             = zauth-service
+COMPONENT             = zauth
 COMPONENT_PREFIX      = install
 COMPONENT_SYSCONFDIR  = $(COMPONENT_PREFIX)/etc
 _COMPONENT            = $(strip $(COMPONENT))
 SUPERVISOR_CONF       = $(_COMPONENT)_supervisor.conf
 SUPERVISORD_DIR       = $(SYSCONFDIR)/supervisor
 REQUIRES_JDK          = 0
-REQUIRES_PYTHON       = 1
+REQUIRES_PYTHON       = 0
 SRC_DIR               = src
 BUILD_DIR             = build
 DIST_DIR              = dist
@@ -48,14 +48,7 @@ COMPONENT_NAME ?= $(DFLT_COMPONENT_NAME)
 
 # Specify install-related directories to create as part of the install target.
 # NB: Intentional usage of _PREFIX and PREFIX here to avoid circular dependency.
-INSTALL_MKDIRS = $(_DESTDIR)$(_PREFIX) $(_DESTDIR)$(PREFIX)/log $(_DESTDIR)$(PREFIX)/etc/supervisor
-
-ifeq "$(COMPONENT_TAR)" ""
-    $(call echol,"Please investigate the COMPONENT_TAR macro assignment.")
-    $(error Unable to derive component egg filename)
-endif
-
-TARGET_TAR := $(DIST_DIR)/$(COMPONENT_TAR)
+INSTALL_MKDIRS = $(_DESTDIR)$(_PREFIX) $(_DESTDIR)$(PREFIX)/log $(_DESTDIR)$(PREFIX)/etc/supervisor $(_DESTDIR)$(PREFIX)/etc/$(_COMPONENT) $(_DESTDIR)$(PREFIX)/var/$(_COMPONENT)
 
 #============================================================================
 # Subset of standard build targets our makefiles should implement.  
@@ -65,33 +58,12 @@ TARGET_TAR := $(DIST_DIR)/$(COMPONENT_TAR)
 .PHONY: all build clean devinstall distclean install help mrclean uninstall
 all build: $(TARGET_TAR)
 
-$(TARGET_TAR): $(CHECKED_ENV) $(COMPONENT_SRC)
-	$(call cmd,PYTHON,setup.py,sdist)
-	@$(call echol,$(LINE))
-	@$(call echol,"$(_COMPONENT) built.  See $@")
-
 $(INSTALL_MKDIRS):
 	$(call cmd,MKDIR,$@)
 
-# NB: Use the "|" to indicate an existence-only dep rather than a modtime dep.
-#     This rule should not trigger rebuilding of the component we're installing.
-pyinstall: | $(INSTALL_MKDIRS) 
-	@if [ ! -f "$(TARGET_TAR)" ];then \
-		$(call echol) ;\
-		$(call echol,"Error: Missing $(TARGET_TAR)") ;\
-		$(call echol,"Unable to $@ $(_COMPONENT).") ;\
-		$(call echol,"$(LINE)") ;\
-		$(call echol,"Please run 'make build $@'") ;\
-		$(call echol,"$(LINE)") ;\
-		exit 1 ;\
-	fi 
-	$(warning "About to do this: $(PIPINSTALL) $(TARGET_TAR)")
-	$(PIPINSTALL) $(TARGET_TAR)
-
-install: pyinstall
-	$(warning "Now I'm going to do the symlinking and whatnot")
-	$(eval ETC_CONF:=$(shell $(PYTHON) -c "import zenoss.collector.publisher as x; print x.__path__[0]")/etc)
-	$(call cmd,CP,-rf,$(ETC_CONF),$(_DESTDIR)$(PREFIX))
+install: | $(INSTALL_MKDIRS) 
+	$(warning "Installing zauth conf files.")
+	$(call cmd,CP,,conf/*,$(_DESTDIR)$(PREFIX)/etc/$(_COMPONENT)/)
 	$(call cmd,SYMLINK, ../$(_COMPONENT)/$(SUPERVISOR_CONF),$(_DESTDIR)$(PREFIX)/etc/supervisor/$(SUPERVISOR_CONF))
 	@$(call echol,$(LINE))
 	@$(call echol,"$(_COMPONENT) installed to $(_DESTDIR)$(PREFIX)")
@@ -102,8 +74,6 @@ devinstall: dev% : %
 uninstall: dflt_component_uninstall
 	$(call cmd,RM,-rf,$(_DESTDIR)$(PREFIX)/etc/$(_COMPONENT))
 	$(call cmd,RM,-rf,$(_DESTDIR)$(SUPERVISORD_DIR)/$(SUPERVISOR_CONF))
-	$(call cmd,RM,-rf,$(_DESTDIR)$(PREFIX)/lib/python/zenoss/collector/publisher)
-	$(call cmd,RM,-rf,$(_DESTDIR)$(PREFIX)/lib/python/zenoss.collector.publisher.*)
 
 clean: dflt_component_clean
 	-$(call cmd,PYTHON,setup.py,clean)
