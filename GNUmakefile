@@ -1,4 +1,4 @@
-
+#============================================================================
 #
 # Copyright (C) Zenoss, Inc. 2013, all rights reserved.
 #
@@ -15,70 +15,64 @@
 # Don't let your editor turn tabs into spaces or vice versa.
 #============================================================================
 COMPONENT             = zauth
-COMPONENT_PREFIX      = install
-COMPONENT_SYSCONFDIR  = $(COMPONENT_PREFIX)/etc
 _COMPONENT            = $(strip $(COMPONENT))
 SUPERVISOR_CONF       = $(_COMPONENT)_supervisor.conf
-SUPERVISORD_DIR       = $(SYSCONFDIR)/supervisor
-REQUIRES_JDK          = 0
-REQUIRES_PYTHON       = 0
-SRC_DIR               = src
-BUILD_DIR             = build
-DIST_DIR              = dist
-PIP                   ?= $(shell which pip)
-PYTHON                ?= $(shell which python)
-
-PIPINSTALL = $(PIP) install -i http://zenpip.zendev.org/simple
+SUPERVISORD_DIR       = $(pkgconfdir)/supervisor
 
 #============================================================================
 # Hide common build macros, idioms, and default rules in a separate file.
 #============================================================================
-ifeq "$(wildcard zenmagic.mk)" ""
-    $(error "Makefile for $(_COMPONENT) is unable to include zenmagic.mk.  Please investigate")
+#---------------------------------------------------------------------------#
+# Pull in zenmagic.mk
+#---------------------------------------------------------------------------#
+# Locate and include common build idioms tucked away in 'zenmagic.mk'
+# This holds convenience macros and default target implementations.
+#
+# Generate a list of directories starting here and going up the tree where we
+# should look for an instance of zenmagic.mk to include.
+#
+#     ./zenmagic.mk ../zenmagic.mk ../../zenmagic.mk ../../../zenmagic.mk
+#---------------------------------------------------------------------------#
+NEAREST_ZENMAGIC_MK := $(word 1,$(wildcard ./zenmagic.mk $(shell for slash in $$(echo $(abspath .) | sed -e "s|.*\(/obj/\)\(.*\)|\1\2|g" | sed -e "s|[^/]||g" -e "s|/|/ |g"); do string=$${string}../;echo $${string}zenmagic.mk; done | xargs echo)))
+
+ifeq "$(NEAREST_ZENMAGIC_MK)" ""
+    $(warning "Missing zenmagic.mk needed by the $(COMPONENT)-component makefile.")
+    $(warning "Unable to find our file of build idioms in the current or parent directories.")
+    $(error   "A fully populated src tree usually resolves that.")
 else
-    include zenmagic.mk
+    include $(NEAREST_ZENMAGIC_MK)
 endif
 
-# List of source files needed to build this component.
-COMPONENT_SRC ?= $(DFLT_COMPONENT_SRC)
-
-COMPONENT_TAR ?= $(DFLT_COMPONENT_TAR)
-
-COMPONENT_NAME ?= $(DFLT_COMPONENT_NAME)
-
 # Specify install-related directories to create as part of the install target.
-# NB: Intentional usage of _PREFIX and PREFIX here to avoid circular dependency.
-INSTALL_MKDIRS = $(_DESTDIR)$(_PREFIX) $(_DESTDIR)$(PREFIX)/log $(_DESTDIR)$(PREFIX)/etc/supervisor $(_DESTDIR)$(PREFIX)/etc/$(_COMPONENT) $(_DESTDIR)$(PREFIX)/var/$(_COMPONENT)
+INSTALL_MKDIRS = $(_DESTDIR)$(_prefix) $(_DESTDIR)$(prefix)/log $(_DESTDIR)$(SUPERVISORD_DIR) $(_DESTDIR)$(pkgconfdir)/$(_COMPONENT) $(_DESTDIR)$(prefix)/var/$(_COMPONENT)
 
 #============================================================================
 # Subset of standard build targets our makefiles should implement.  
 #
 # See: http://www.gnu.org/prep/standards/html_node/Standard-Targets.html#Standard-Targets
 #============================================================================
-.PHONY: all build clean devinstall distclean install help mrclean uninstall
-all build: $(TARGET_TAR)
+.PHONY: all clean devinstall distclean install installhere help mrclean uninstall uninstallhere
+all:
 
 $(INSTALL_MKDIRS):
 	$(call cmd,MKDIR,$@)
 
-install: | $(INSTALL_MKDIRS) 
+install installhere: | $(INSTALL_MKDIRS) 
 	$(warning "Installing zauth conf files.")
-	$(call cmd,CP,,conf/*,$(_DESTDIR)$(PREFIX)/etc/$(_COMPONENT)/)
-	$(call cmd,SYMLINK, ../$(_COMPONENT)/$(SUPERVISOR_CONF),$(_DESTDIR)$(PREFIX)/etc/supervisor/$(SUPERVISOR_CONF))
+	$(call cmd,CP,,conf/*,$(_DESTDIR)$(pkgconfdir)/$(_COMPONENT)/)
+	$(call cmd,SYMLINK, ../$(_COMPONENT)/$(SUPERVISOR_CONF),$(_DESTDIR)$(SUPERVISORD_DIR)/$(SUPERVISOR_CONF))
 	@$(call echol,$(LINE))
-	@$(call echol,"$(_COMPONENT) installed to $(_DESTDIR)$(PREFIX)")
+	@$(call echol,"$(_COMPONENT) installed to $(_DESTDIR)$(prefix)")
 
 devinstall: dev% : %
 	@$(call echol,"Add logic to the $@ rule if you want it to behave differently than the $< rule.")
 
 uninstall: dflt_component_uninstall
-	$(call cmd,RM,-rf,$(_DESTDIR)$(PREFIX)/etc/$(_COMPONENT))
-	$(call cmd,RM,-rf,$(_DESTDIR)$(SUPERVISORD_DIR)/$(SUPERVISOR_CONF))
+	$(call cmd,RMDIR,$(_DESTDIR)$(pkgconfdir)/$(_COMPONENT))
+	$(call cmd,RMDIR,$(_DESTDIR)$(SUPERVISORD_DIR)/$(SUPERVISOR_CONF))
 
-clean: dflt_component_clean
-	-$(call cmd,PYTHON,setup.py,clean)
-	$(call cmd,RM,-rf,$(BUILD_DIR))
-	$(call cmd,RM,-rf,$(DIST_DIR))
+uninstallhere:
+	$(call cmd,RMDIR,$(_DESTDIR))
 
 mrclean distclean: dflt_component_distclean
 
