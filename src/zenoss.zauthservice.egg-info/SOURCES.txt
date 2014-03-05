@@ -1,0 +1,17 @@
+MANIFEST.in
+README.rst
+src/zenoss/__init__.py
+src/zenoss/__init__.pyc
+src/zenoss.zauthservice.egg-info/PKG-INFO
+src/zenoss.zauthservice.egg-info/SOURCES.txt
+src/zenoss.zauthservice.egg-info/dependency_links.txt
+src/zenoss.zauthservice.egg-info/entry_points.txt
+src/zenoss.zauthservice.egg-info/namespace_packages.txt
+src/zenoss.zauthservice.egg-info/not-zip-safe
+src/zenoss.zauthservice.egg-info/requires.txt
+src/zenoss.zauthservice.egg-info/test_info.txt
+src/zenoss.zauthservice.egg-info/top_level.txt
+src/zenoss/zauthservice/__init__.py
+src/zenoss/zauthservice/__init__.pyc
+src/zenoss/zauthservice/daemon.py
+src/zenoss/zauthservice/daemon.pyc
